@@ -20,7 +20,6 @@ import {
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { IS_PUBLIC_KEY } from "./decorators";
-import { CLERK_CLIENT } from "./auth.module";
 import { DATABASE_TOKEN } from "../database/database.module";
 import type { Database } from "@pos/database";
 import { users } from "@pos/database";
@@ -37,7 +36,7 @@ export interface AuthContext {
 @Injectable()
 export class ClerkAuthGuard implements CanActivate {
   constructor(
-    @Inject(CLERK_CLIENT) private readonly clerk: any,
+    @Inject("CLERK_CLIENT") private readonly clerk: any,
     @Inject(DATABASE_TOKEN) private readonly db: Database,
     private readonly reflector: Reflector
   ) {}
