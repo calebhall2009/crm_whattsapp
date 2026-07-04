@@ -40,14 +40,29 @@ import { BillingModule } from "./billing/billing.module";
 
     // ── Queue (BullMQ + Redis) ────────────────────────────────
     BullModule.forRoot({
-      connection: process.env.REDIS_URL
-        ? process.env.REDIS_URL
-        : {
-            host: process.env.REDIS_HOST || "localhost",
-            port: parseInt(process.env.REDIS_PORT || "6379", 10),
-            password: process.env.REDIS_PASSWORD || undefined,
-            tls: process.env.REDIS_TLS === "true" ? {} : undefined,
-          },
+      connection: (() => {
+        if (process.env.REDIS_URL) {
+          try {
+            const parsed = new URL(process.env.REDIS_URL);
+            return {
+              host: parsed.hostname,
+              port: parseInt(parsed.port || "6379", 10),
+              password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
+              username: parsed.username || undefined,
+              // If protocol is 'rediss:' (with two 's'), enable TLS (SSL)
+              tls: parsed.protocol === "rediss:" ? {} : undefined,
+            };
+          } catch (e) {
+            // Fallback to separate env variables if parsing fails
+          }
+        }
+        return {
+          host: process.env.REDIS_HOST || "localhost",
+          port: parseInt(process.env.REDIS_PORT || "6379", 10),
+          password: process.env.REDIS_PASSWORD || undefined,
+          tls: process.env.REDIS_TLS === "true" ? {} : undefined,
+        };
+      })() as any,
     }),
 
     // ── Core ──────────────────────────────────────────────────
