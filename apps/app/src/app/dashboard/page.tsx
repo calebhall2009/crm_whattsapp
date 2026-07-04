@@ -65,7 +65,7 @@ export default function DashboardPage() {
             <p className="font-medium text-charcoal-700 text-sm">IA conectada · Modo desarrollo</p>
             <p className="text-xs text-charcoal-400 mt-0.5">
               Configura <code className="font-mono bg-charcoal-100 px-1 rounded">WHATSAPP_ACCESS_TOKEN</code> y{" "}
-              <code className="font-mono bg-charcoal-100 px-1 rounded">OPENAI_API_KEY</code> en el .env para producción.
+              <code className="font-mono bg-charcoal-100 px-1 rounded">GEMINI_API_KEY</code> en el .env para producción.
             </p>
           </div>
           <span className="ml-auto text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-tag font-medium">
