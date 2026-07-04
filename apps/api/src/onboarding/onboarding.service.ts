@@ -34,8 +34,9 @@ export class OnboardingService {
       // 1. Verify Clerk session token
       const payload = await this.clerk.verifyToken(clerkToken);
       clerkUserId = payload.sub;
-    } catch (e) {
-      throw new BadRequestException("Invalid or expired session token");
+    } catch (e: any) {
+      console.error("CLERK_VERIFY_TOKEN_ERROR:", e);
+      throw new BadRequestException(`Invalid or expired session token: ${e.message || e}`);
     }
 
     // 2. Check if user already onboarded
@@ -53,8 +54,9 @@ export class OnboardingService {
     let clerkUser: any;
     try {
       clerkUser = await this.clerk.users.getUser(clerkUserId);
-    } catch (e) {
-      throw new BadRequestException("Failed to fetch user details from Clerk");
+    } catch (e: any) {
+      console.error("CLERK_GET_USER_ERROR:", e);
+      throw new BadRequestException(`Failed to fetch user details from Clerk: ${e.message || e}`);
     }
 
     const email = clerkUser.emailAddresses[0]?.emailAddress;

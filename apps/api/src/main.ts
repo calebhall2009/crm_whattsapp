@@ -9,7 +9,9 @@ import helmet from "helmet";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: true preserves the unparsed request body so webhook signature
+  // verifiers (e.g. Stripe) can validate against the original payload.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // ── Security ────────────────────────────────────────────────
   app.use(helmet());

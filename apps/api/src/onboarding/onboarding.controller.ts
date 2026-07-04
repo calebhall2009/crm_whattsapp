@@ -25,11 +25,15 @@ export class OnboardingController {
     }
 
     const token = authorization.replace("Bearer ", "");
-    const result = await this.service.onboard(token, body);
-
-    return {
-      message: "Onboarding completed successfully",
-      data: result,
-    };
+    try {
+      const result = await this.service.onboard(token, body);
+      return {
+        message: "Onboarding completed successfully",
+        data: result,
+      };
+    } catch (err: any) {
+      console.error("ONBOARDING_ERROR_LOG:", err);
+      throw new BadRequestException(err.message || "Error al completar el registro inicial.");
+    }
   }
 }
