@@ -1,0 +1,29 @@
+{
+  "name": "@pos/app",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "clean": "rm -rf .next .turbo"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^6.12.0",
+    "next": "^15.3.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "@pos/ui": "workspace:*",
+    "@pos/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.4",
+    "tailwindcss": "^4.1.8",
+    "@tailwindcss/postcss": "^4.1.8",
+    "postcss": "^8.5.3",
+    "typescript": "~5.6.3"
+  }
+}

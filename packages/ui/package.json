@@ -1,0 +1,23 @@
+{
+  "name": "@pos/ui",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.tsx",
+  "types": "./src/index.tsx",
+  "sideEffects": false,
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "clsx": "^2.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.4",
+    "tailwindcss": "^4.1.8",
+    "typescript": "~5.6.3"
+  }
+}

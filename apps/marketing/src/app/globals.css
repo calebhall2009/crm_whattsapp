@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@theme {
+  --color-charcoal-50: #F2F2F5;
+  --color-charcoal-100: #E5E5EB;
+  --color-charcoal-200: #C9C9D6;
+  --color-charcoal-300: #A8A8BF;
+  --color-charcoal-400: #7E7E9F;
+  --color-charcoal-500: #4A4A6A;
+  --color-charcoal-600: #2D2D48;
+  --color-charcoal-700: #22223A;
+  --color-charcoal-800: #1A1A2E;
+  --color-charcoal-900: #121220;
+  --color-charcoal-950: #0A0A14;
+
+  --color-amber-50: #FEF6E7;
+  --color-amber-100: #FDE9C3;
+  --color-amber-200: #FBD68F;
+  --color-amber-300: #F5C05A;
+  --color-amber-400: #E8A838;
+  --color-amber-500: #D4912A;
+  --color-amber-600: #B3751F;
+
+  --color-sage-50: #F0F4F1;
+  --color-sage-100: #DCE5DE;
+  --color-sage-200: #B8CBB9;
+  --color-sage-300: #9AB59D;
+  --color-sage-400: #7C9A82;
+  --color-sage-500: #638069;
+
+  --color-rose-400: #C4616C;
+  --color-rose-500: #A84952;
+
+  --color-paper-50: #FAFAF8;
+  --color-paper-100: #F5F0EB;
+  --color-paper-200: #EBE5DD;
+
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --radius-card: 0.75rem;
+  --radius-button: 0.5rem;
+  --shadow-card: 0 1px 3px rgba(26, 26, 46, 0.08), 0 1px 2px rgba(26, 26, 46, 0.04);
+  --shadow-card-hover: 0 4px 12px rgba(26, 26, 46, 0.10), 0 2px 4px rgba(26, 26, 46, 0.06);
+  --shadow-terminal: 0 8px 32px rgba(26, 26, 46, 0.12), 0 2px 8px rgba(26, 26, 46, 0.06);
+
+  --animate-slide-up: slide-up 0.3s ease-out;
+  --animate-fade-in: fade-in 0.2s ease-out;
+}
+
+@keyframes slide-up {
+  0% { transform: translateY(8px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-charcoal-800);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

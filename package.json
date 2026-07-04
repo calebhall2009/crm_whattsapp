@@ -1,0 +1,23 @@
+{
+  "name": "pos-saas",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "db:generate": "turbo run db:generate --filter=@pos/database",
+    "db:migrate": "turbo run db:migrate --filter=@pos/database",
+    "db:studio": "turbo run db:studio --filter=@pos/database",
+    "clean": "turbo run clean",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "turbo": "^2.4.4",
+    "typescript": "~5.6.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
