@@ -16,7 +16,7 @@ import {
 } from "@nestjs/common";
 import { ContactsService } from "./contacts.service";
 import { CompanyId, Auth, Roles } from "../auth/decorators";
-import type { AuthContext } from "../auth/clerk.guard";
+import type { AuthContext } from "../auth/jwt.guard";
 
 @Controller("contacts")
 export class ContactsController {

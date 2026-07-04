@@ -35,9 +35,8 @@ export class UsersController {
       locationId?: string;
     }
   ) {
-    // In production, this would also send a Clerk invitation email
+    // Creates a pending user. In production, we'd email them to set their password.
     const user = await this.service.create(companyId, {
-      clerkUserId: `pending_${Date.now()}`, // Placeholder until Clerk invite is accepted
       ...body,
     });
     return { data: user };

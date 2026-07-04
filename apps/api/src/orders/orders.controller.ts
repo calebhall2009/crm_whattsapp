@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Param, Body, Query } from "@nestjs/common";
 import { OrdersService } from "./orders.service";
 import { Auth, CompanyId, Roles } from "../auth/decorators";
-import type { AuthContext } from "../auth/clerk.guard";
+import type { AuthContext } from "../auth/jwt.guard";
 
 @Controller("orders")
 export class OrdersController {

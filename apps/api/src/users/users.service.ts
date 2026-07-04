@@ -28,12 +28,12 @@ export class UsersService {
   }
 
   async create(companyId: string, data: {
-    clerkUserId: string;
     role: string;
     locationId?: string;
     firstName: string;
     lastName: string;
     email: string;
+    passwordHash?: string;
   }) {
     const [user] = await this.db
       .insert(users)
@@ -47,6 +47,7 @@ export class UsersService {
     role?: string;
     locationId?: string | null;
     isActive?: boolean;
+    passwordHash?: string;
   }) {
     return withTenantTransaction(this.db, companyId, async (tx) => {
       const [user] = await tx
@@ -60,11 +61,11 @@ export class UsersService {
     });
   }
 
-  async findByClerkId(clerkUserId: string) {
+  async findByEmail(email: string) {
     const [user] = await this.db
       .select()
       .from(users)
-      .where(eq(users.clerkUserId, clerkUserId))
+      .where(eq(users.email, email.toLowerCase().trim()))
       .limit(1);
 
     return user;

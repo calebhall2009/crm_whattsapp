@@ -1,37 +1,30 @@
 // ─────────────────────────────────────────────────────────────
-// Auth Module — Clerk JWT verification + role-based access
+// Auth Module — JWT propio (sin Clerk)
 // ─────────────────────────────────────────────────────────────
 
 import { Module, Global } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
-import { ClerkAuthGuard } from "./clerk.guard";
+import { JwtAuthGuard } from "./jwt.guard";
 import { RolesGuard } from "./roles.guard";
-
-export const CLERK_CLIENT = "CLERK_CLIENT";
+import { AuthController } from "./auth.controller";
+import { AuthService } from "./auth.service";
 
 @Global()
 @Module({
+  controllers: [AuthController],
   providers: [
-    {
-      provide: CLERK_CLIENT,
-      useFactory: async () => {
-        const { createClerkClient } = await import("@clerk/backend");
-        return createClerkClient({
-          secretKey: process.env.CLERK_SECRET_KEY!,
-        });
-      },
-    },
-    // Apply auth guard globally — all routes require auth by default
-    // Use @Public() decorator to opt out specific endpoints
+    AuthService,
+    // Guard principal — verifica JWT en cada request
     {
       provide: APP_GUARD,
-      useClass: ClerkAuthGuard,
+      useClass: JwtAuthGuard,
     },
+    // Guard secundario — verifica @Roles()
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
   ],
-  exports: [CLERK_CLIENT],
+  exports: [AuthService],
 })
 export class AuthModule {}

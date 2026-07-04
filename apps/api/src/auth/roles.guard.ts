@@ -10,7 +10,7 @@ import {
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { ROLES_KEY, IS_PUBLIC_KEY } from "./decorators";
-import type { AuthContext } from "./clerk.guard";
+import type { AuthContext } from "./jwt.guard";
 
 @Injectable()
 export class RolesGuard implements CanActivate {

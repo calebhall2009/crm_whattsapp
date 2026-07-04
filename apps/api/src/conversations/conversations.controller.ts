@@ -12,7 +12,7 @@ import {
 } from "@nestjs/common";
 import { ConversationsService } from "./conversations.service";
 import { CompanyId, Auth, Roles } from "../auth/decorators";
-import type { AuthContext } from "../auth/clerk.guard";
+import type { AuthContext } from "../auth/jwt.guard";
 
 @Controller("conversations")
 export class ConversationsController {

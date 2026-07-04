@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
-import { AuthGate } from "../components/AuthGate";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "POS SaaS — Punto de Venta",
-  description: "Sistema de punto de venta multi-rubro para tu negocio",
+  title: "CRM + WhatsApp IA — Tu Sistema de Gestión",
+  description: "CRM con WhatsApp automatizado e IA para restaurantes, spas, barberías, hoteles y más.",
 };
 
 export default function RootLayout({
@@ -14,12 +12,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
-      <html lang="es">
-        <body className="min-h-screen bg-paper-50 antialiased">
-          <AuthGate>{children}</AuthGate>
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="es">
+      <body className="min-h-screen bg-paper-50 antialiased">
+        {children}
+      </body>
+    </html>
   );
 }

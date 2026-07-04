@@ -285,20 +285,44 @@ export class WhatsAppService {
     }
   }
 
-  /** Map a Meta phone_number_id to a companyId via the companies table */
+  /**
+   * Map a Meta phone_number_id to a companyId via the companies table.
+   *
+   * SECURITY: This MUST match a real per-tenant mapping — never fall back to
+   * "the first company in the DB" in production, that would route tenant A's
+   * inbound WhatsApp traffic into tenant B's data.
+   *
+   * The schema is expected to have a `whatsappPhoneNumberId` column on the
+   * `companies` table; if it doesn't exist, the function returns null and
+   * the message is dropped (fail-closed) rather than misrouted.
+   */
   private async resolveCompany(phoneNumberId: string): Promise<string | null> {
+    if (!phoneNumberId) return null;
+
     if (this.phoneNumberToCompany.has(phoneNumberId)) {
-      return this.phoneNumberToCompany.get(phoneNumberId)!;
+      return this.phoneNumberToCompany.get(phoneNumberId) ?? null;
     }
 
-    // Look up by whatsapp_phone_number_id stored in company (future field)
-    // For now: if only one company exists, use it (dev/single-tenant mode)
-    const [company] = await this.db.select().from(companies).limit(1);
-    if (company) {
-      this.phoneNumberToCompany.set(phoneNumberId, company.id);
-      return company.id;
+    // Fail-closed: only return a company that actually owns this phone number.
+    // We select `id` only and filter on the phone_number_id column. If the
+    // schema column doesn't exist yet this query will throw and the message
+    // is dropped — which is the correct behaviour (the alternative is
+    // silent cross-tenant data leak).
+    const rows = await this.db
+      .select({ id: companies.id })
+      .from(companies)
+      .where(eq((companies as any).whatsappPhoneNumberId, phoneNumberId))
+      .limit(1);
+
+    const company = rows[0];
+    if (!company) {
+      this.logger.warn(
+        `No company matches phone_number_id=${phoneNumberId} — dropping message (fail-closed)`
+      );
+      return null;
     }
 
-    return null;
+    this.phoneNumberToCompany.set(phoneNumberId, company.id);
+    return company.id;
   }
 }

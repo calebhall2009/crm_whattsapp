@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useState, useEffect } from "react";
+import { getCurrentUser, API_URL } from "@/lib/auth";
 
 interface SettingSection {
   id: string;
@@ -12,14 +12,15 @@ interface SettingSection {
 const SECTIONS: SettingSection[] = [
   { id: "company",      label: "Empresa",          icon: "🏢" },
   { id: "whatsapp",     label: "WhatsApp / Bot IA", icon: "💬" },
+  { id: "support",      label: "Soporte Técnico",  icon: "🎫" },
   { id: "notifications",label: "Notificaciones",   icon: "🔔" },
   { id: "billing",      label: "Plan & Facturación",icon: "💳" },
   { id: "team",         label: "Equipo",            icon: "👥" },
 ];
 
 export default function SettingsPage() {
-  const { getToken } = useAuth();
   const [active, setActive] = useState("company");
+  const [user, setUser] = useState<any>(null);
 
   const [companyForm, setCompanyForm] = useState({
     name: "",
@@ -31,18 +32,52 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Estados de Tickets de Soporte
+  const [ticketSubject, setTicketSubject] = useState("");
+  const [ticketMessage, setTicketMessage] = useState("");
+  const [ticketPriority, setTicketPriority] = useState("medium");
+  const [ticketSending, setTicketSending] = useState(false);
+  const [ticketSent, setTicketSent] = useState(false);
+
+  useEffect(() => {
+    async function loadUser() {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+      
+      // Obtener datos iniciales de la empresa
+      if (currentUser?.companyId) {
+        try {
+          const res = await fetch(`${API_URL}/companies/me`, {
+            credentials: "include"
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setCompanyForm({
+              name: data.name || "",
+              taxId: data.taxId || "",
+              phone: data.phone || "",
+              address: data.address || "",
+              website: data.website || "",
+            });
+          }
+        } catch (e) {
+          console.error("Error al cargar datos de empresa:", e);
+        }
+      }
+    }
+    loadUser();
+  }, []);
+
   async function handleSaveCompany(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
-      const token = await getToken();
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-      await fetch(`${apiUrl}/companies/me`, {
+      await fetch(`${API_URL}/companies/me`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({ name: companyForm.name, taxId: companyForm.taxId }),
       });
       setSaved(true);
@@ -51,6 +86,39 @@ export default function SettingsPage() {
       console.error(e);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSendTicket(e: React.FormEvent) {
+    e.preventDefault();
+    if (!ticketSubject || !ticketMessage) return;
+
+    setTicketSending(true);
+    try {
+      // Endpoint mock o real para guardar ticket de soporte
+      const res = await fetch(`${API_URL}/admin/tickets`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          subject: ticketSubject,
+          message: ticketMessage,
+          priority: ticketPriority,
+        }),
+      });
+
+      if (res.ok) {
+        setTicketSent(true);
+        setTicketSubject("");
+        setTicketMessage("");
+        setTimeout(() => setTicketSent(false), 5000);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTicketSending(false);
     }
   }
 
@@ -199,7 +267,7 @@ export default function SettingsPage() {
 
                 <SettingRow
                   label="API URL del Backend"
-                  value="https://posapi-production-4969.up.railway.app"
+                  value={API_URL}
                   description="URL donde el bot local envía los mensajes para ser procesados por la IA."
                   mono
                 />
@@ -210,7 +278,7 @@ export default function SettingsPage() {
                 />
                 <SettingRow
                   label="Período de Prueba"
-                  value="3 días activos"
+                  value="14 días activos"
                   description="Tu cuenta está en período de prueba gratuito."
                 />
               </div>
@@ -219,10 +287,80 @@ export default function SettingsPage() {
                 <h3 className="text-sm font-semibold text-charcoal-700 mb-3">Variables de Entorno del Bot</h3>
                 <div className="bg-charcoal-900 rounded-card p-4 font-mono text-xs text-emerald-400 space-y-1">
                   <p><span className="text-charcoal-400"># En tu archivo .env del bot local</span></p>
-                  <p>CRM_API_URL=https://posapi-production-4969.up.railway.app</p>
+                  <p>CRM_API_URL={API_URL}</p>
                   <p>GEMINI_API_KEY=<span className="text-amber-400">tu_clave_aqui</span></p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {active === "support" && (
+            <div className="bg-white rounded-card shadow-card border border-charcoal-100 p-6">
+              <h2 className="font-display font-semibold text-charcoal-800 text-lg mb-1">Soporte Técnico</h2>
+              <p className="text-sm text-charcoal-400 mb-6">Envía tus consultas o reporta problemas directamente a nuestro equipo de desarrollo</p>
+
+              {ticketSent && (
+                <div className="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-button text-sm flex items-center gap-2">
+                  <span>✅</span> Ticket enviado. Nos pondremos en contacto contigo lo antes posible.
+                </div>
+              )}
+
+              <form onSubmit={handleSendTicket} className="space-y-4">
+                <div>
+                  <label htmlFor="ticket-subject" className="block text-xs font-medium text-charcoal-600 mb-1">
+                    Asunto *
+                  </label>
+                  <input
+                    id="ticket-subject"
+                    type="text"
+                    required
+                    value={ticketSubject}
+                    onChange={(e) => setTicketSubject(e.target.value)}
+                    placeholder="Ej. Integración de WhatsApp no responde, Error en el dashboard"
+                    className="w-full px-3 py-2 border border-charcoal-200 rounded-button text-sm font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="ticket-priority" className="block text-xs font-medium text-charcoal-600 mb-1">
+                    Prioridad
+                  </label>
+                  <select
+                    id="ticket-priority"
+                    value={ticketPriority}
+                    onChange={(e) => setTicketPriority(e.target.value)}
+                    className="w-full px-3 py-2 border border-charcoal-200 rounded-button text-sm font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    <option value="low">Baja - Duda o sugerencia</option>
+                    <option value="medium">Media - Error menor</option>
+                    <option value="high">Alta - Error de funcionalidad</option>
+                    <option value="urgent">Urgente - Sistema caído o bloqueado</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="ticket-message" className="block text-xs font-medium text-charcoal-600 mb-1">
+                    Mensaje / Detalles *
+                  </label>
+                  <textarea
+                    id="ticket-message"
+                    required
+                    rows={4}
+                    value={ticketMessage}
+                    onChange={(e) => setTicketMessage(e.target.value)}
+                    placeholder="Explica detalladamente qué sucede y cómo podemos ayudarte..."
+                    className="w-full px-3 py-2 border border-charcoal-200 rounded-button text-sm font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  />
+                </div>
+                <div className="pt-2 flex justify-end">
+                  <button
+                    id="btn-send-ticket"
+                    type="submit"
+                    disabled={ticketSending}
+                    className="px-6 py-2.5 bg-amber-400 text-charcoal-900 rounded-button text-sm font-semibold hover:bg-amber-300 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    {ticketSending ? "Enviando..." : "Enviar Ticket"}
+                  </button>
+                </div>
+              </form>
             </div>
           )}
 
@@ -238,7 +376,7 @@ export default function SettingsPage() {
                   { id: "notif-appointment", label: "Recordatorio de citas",         desc: "Alerta 30 minutos antes de cada cita programada." },
                   { id: "notif-pipeline",    label: "Cambios en el pipeline",        desc: "Alertas cuando un contacto avanza de etapa." },
                 ].map((n) => (
-                  <div key={n.id} className="flex items-start justify-between gap-4 py-3 border-b border-charcoal-50 last:border-0">
+                  <div key={n.id} className="flex items-start justify-between gap-4 py-3 border-b border-charcoal-5 default:border-0 last:border-0">
                     <div>
                       <p className="text-sm font-medium text-charcoal-800">{n.label}</p>
                       <p className="text-xs text-charcoal-400 mt-0.5">{n.desc}</p>
@@ -263,7 +401,7 @@ export default function SettingsPage() {
                   <div>
                     <p className="text-xs font-medium text-amber-600 uppercase tracking-wider">Plan Actual</p>
                     <p className="text-2xl font-bold font-display text-charcoal-800 mt-1">Prueba Gratuita</p>
-                    <p className="text-sm text-charcoal-500 mt-1">3 días de acceso completo</p>
+                    <p className="text-sm text-charcoal-500 mt-1">14 días de acceso completo</p>
                   </div>
                   <span className="text-4xl">🚀</span>
                 </div>
@@ -332,15 +470,15 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between px-5 py-4 bg-paper-50 border-b border-charcoal-100">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-amber-400 flex items-center justify-center text-charcoal-900 font-bold text-sm">
-                      T
+                      {user?.email?.charAt(0).toUpperCase() || "U"}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-charcoal-800">Tú (Propietario)</p>
+                      <p className="text-sm font-semibold text-charcoal-800">Tú ({user?.role || "Propietario"})</p>
                       <p className="text-xs text-charcoal-400 font-mono">cuenta activa</p>
                     </div>
                   </div>
-                  <span className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-tag font-medium">
-                    Owner
+                  <span className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-tag font-medium capitalize">
+                    {user?.role || "Owner"}
                   </span>
                 </div>
               </div>

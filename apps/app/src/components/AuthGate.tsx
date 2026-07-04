@@ -1,72 +1,85 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
   const [checking, setChecking] = useState(true);
+  const [isLoaded, setIsLoaded] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const checkedPathRef = useRef<string | null>(null);
 
   useEffect(() => {
-    async function checkUser() {
-      if (!isLoaded) return;
-      if (!isSignedIn) {
+    // Evitar verificar múltiples veces para la misma ruta
+    if (checkedPathRef.current === pathname) return;
+
+    async function verifyAuth() {
+      // Rutas totalmente públicas que no requieren ninguna autenticación
+      if (pathname === "/login" || pathname === "/register" || pathname === "/") {
+        checkedPathRef.current = pathname;
         setChecking(false);
+        setIsLoaded(true);
         return;
       }
 
       try {
-        const token = await getToken();
-        if (!token) {
-          setChecking(false);
+        const user = await getCurrentUser();
+
+        if (!user) {
+          // Si no está logueado y no está en una ruta pública, enviar a login
+          checkedPathRef.current = pathname;
+          router.push("/login");
           return;
         }
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-        const res = await fetch(`${apiUrl}/companies/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (res.status === 200) {
-          // User exists and has a company — if on onboarding, send to dashboard
-          if (pathname === "/onboarding") {
-            router.push("/dashboard");
-          } else {
-            setChecking(false);
-          }
-        } else {
-          // Any non-200 (401, 403, 404, 500) means user is not yet onboarded
-          // (new Clerk user with no DB record, or guard wrapping the error)
-          if (pathname !== "/onboarding") {
-            router.push("/onboarding");
-          } else {
-            setChecking(false);
-          }
+        // Si está logueado pero no tiene una empresa asociada (y no está en onboarding),
+        // redirigir a completar el perfil / onboarding
+        if (!user.companyId && !user.isSuperAdmin && pathname !== "/onboarding") {
+          checkedPathRef.current = pathname;
+          router.push("/onboarding");
+          return;
         }
-      } catch (err) {
-        console.error("Error checking user onboarding state:", err);
+
+        // Si ya tiene empresa e intenta ir a onboarding o login, enviarlo al dashboard
+        if ((user.companyId || user.isSuperAdmin) && (pathname === "/onboarding" || pathname === "/login")) {
+          checkedPathRef.current = pathname;
+          router.push("/dashboard");
+          return;
+        }
+
+        // Permitir el paso
+        checkedPathRef.current = pathname;
         setChecking(false);
+        setIsLoaded(true);
+      } catch (err) {
+        console.error("Error al verificar estado de autenticación:", err);
+        checkedPathRef.current = pathname;
+        router.push("/login");
       }
     }
 
-    checkUser();
-  }, [isLoaded, isSignedIn, pathname, router, getToken]);
+    verifyAuth();
+  }, [pathname, router]);
 
+  // Pantalla de carga estética mientras verificamos el estado
   if (!isLoaded || checking) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-paper-50 font-mono text-charcoal-700">
+      <div
+        className="flex flex-col items-center justify-center min-h-screen bg-paper-50 font-mono text-charcoal-700"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
         <div className="flex items-center gap-2 mb-4 animate-pulse">
-          <span className="text-xl">◆</span>
+          <span className="text-xl" aria-hidden="true">◆</span>
           <span className="font-bold tracking-tight text-lg uppercase">Cargando Sistema...</span>
         </div>
         <div className="w-48 h-1 bg-charcoal-100 rounded-full overflow-hidden">
           <div className="w-1/2 h-full bg-amber-400 rounded-full animate-progress" />
         </div>
+        <span className="sr-only">Cargando, por favor espere.</span>
       </div>
     );
   }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
+import { API_URL } from "@/lib/auth";
 
 interface Contact {
   id: string;
@@ -33,38 +33,39 @@ const SOURCE_ICONS: Record<string, string> = {
 };
 
 export default function ContactsPage() {
-  const { getToken } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [showModal, setShowModal] = useState(false);
 
-  async function loadContacts() {
+  const loadContacts = async (signal?: AbortSignal) => {
     try {
-      const token = await getToken();
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
       const params = new URLSearchParams();
       if (search) params.set("search", search);
       if (statusFilter) params.set("status", statusFilter);
 
-      const res = await fetch(`${apiUrl}/contacts?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`${API_URL}/contacts?${params}`, {
+        credentials: "include",
+        signal,
       });
-      if (res.ok) {
+      if (res.ok && !signal?.aborted) {
         const json = await res.json();
         setContacts(json.data ?? []);
       }
     } catch (e) {
+      if ((e as Error)?.name === "AbortError") return;
       console.error(e);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    loadContacts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const abortController = new AbortController();
+    setLoading(true);
+    loadContacts(abortController.signal);
+    return () => abortController.abort();
   }, [search, statusFilter]);
 
   return (
@@ -87,54 +88,49 @@ export default function ContactsPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <input
+          id="search-contacts"
           type="search"
-          placeholder="Buscar por nombre, teléfono o email..."
+          placeholder="Buscar por nombre o teléfono..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 px-4 py-2.5 bg-white border border-charcoal-200 rounded-button text-sm font-body placeholder:text-charcoal-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          className="flex-1 px-4 py-2.5 bg-white border border-charcoal-200 rounded-button text-sm font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         />
         <select
+          id="filter-status"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2.5 bg-white border border-charcoal-200 rounded-button text-sm font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          className="sm:w-48 px-3 py-2.5 bg-white border border-charcoal-200 rounded-button text-sm font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
-          <option value="">Todos los estados</option>
-          {Object.entries(STATUS_LABELS).map(([value, { label }]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
+          <option value="">Todos los Estados</option>
+          <option value="new">Nuevo</option>
+          <option value="contacted">Contactado</option>
+          <option value="qualified">Calificado</option>
+          <option value="proposal">Propuesta</option>
+          <option value="closed_won">Ganado ✓</option>
+          <option value="closed_lost">Perdido</option>
         </select>
       </div>
 
-      {/* Table */}
+      {/* Contacts List */}
       <div className="bg-white rounded-card shadow-card border border-charcoal-100 overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-charcoal-400 font-mono text-sm animate-pulse">
-            Cargando contactos...
-          </div>
+          <p className="text-center text-charcoal-400 text-sm p-12">Cargando contactos...</p>
         ) : contacts.length === 0 ? (
-          <div className="p-12 text-center">
-            <p className="text-4xl mb-3">👥</p>
-            <p className="font-display font-semibold text-charcoal-700 mb-1">Sin contactos aún</p>
-            <p className="text-sm text-charcoal-400 mb-4">
-              Los leads que escriban por WhatsApp aparecerán aquí automáticamente.
-            </p>
-            <button
-              onClick={() => setShowModal(true)}
-              className="px-4 py-2 bg-amber-400 text-charcoal-900 rounded-button text-sm font-semibold hover:bg-amber-300 transition-colors"
-            >
-              + Crear primer contacto
-            </button>
+          <div className="text-center py-12">
+            <span className="text-4xl">👥</span>
+            <p className="font-display font-semibold text-charcoal-500 text-lg mt-3">No hay contactos encontrados</p>
+            <p className="text-sm text-charcoal-400 mt-1">Crea un contacto nuevo o conecta tu WhatsApp bot.</p>
           </div>
         ) : (
-          <table className="w-full">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-charcoal-100 bg-paper-50">
-                <th className="px-5 py-3 text-left text-xs font-medium text-charcoal-500 uppercase tracking-wider">Contacto</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-charcoal-500 uppercase tracking-wider">Teléfono</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-charcoal-500 uppercase tracking-wider">Estado</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-charcoal-500 uppercase tracking-wider">Origen</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-charcoal-500 uppercase tracking-wider">Último contacto</th>
-                <th className="px-5 py-3" />
+              <tr className="bg-paper-50 border-b border-charcoal-100 font-mono text-xs text-charcoal-500 uppercase tracking-wider">
+                <th className="px-5 py-3 font-semibold">Nombre</th>
+                <th className="px-5 py-3 font-semibold">Teléfono</th>
+                <th className="px-5 py-3 font-semibold">Estado</th>
+                <th className="px-5 py-3 font-semibold">Origen</th>
+                <th className="px-5 py-3 font-semibold">Último Contacto</th>
+                <th className="px-5 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-charcoal-50">
@@ -192,7 +188,6 @@ export default function ContactsPage() {
             setLoading(true);
             loadContacts();
           }}
-          getToken={getToken}
         />
       )}
     </div>
@@ -202,39 +197,51 @@ export default function ContactsPage() {
 function NewContactModal({
   onClose,
   onSaved,
-  getToken,
 }: {
   onClose: () => void;
   onSaved: () => void;
-  getToken: () => Promise<string | null>;
 }) {
   const [form, setForm] = useState({ name: "", phone: "", email: "", source: "manual" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const PHONE_RE = /^[+()\d\s-]{7,20}$/;
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim() || !form.phone.trim()) {
+    const name = form.name.trim();
+    const phone = form.phone.trim();
+    const email = form.email.trim();
+    if (!name || !phone) {
       setError("Nombre y teléfono son obligatorios.");
+      return;
+    }
+    if (!PHONE_RE.test(phone)) {
+      setError("El teléfono solo puede contener dígitos, espacios, +, ( ) y guiones.");
+      return;
+    }
+    if (email && !EMAIL_RE.test(email)) {
+      setError("El email no tiene un formato válido.");
       return;
     }
     setLoading(true);
     setError("");
+    const abortController = new AbortController();
     try {
-      const token = await getToken();
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-      const res = await fetch(`${apiUrl}/contacts`, {
+      const res = await fetch(`${API_URL}/contacts`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({
-          name: form.name.trim(),
-          phone: form.phone.trim(),
-          email: form.email.trim() || undefined,
+          name,
+          phone,
+          email: email || undefined,
           source: form.source,
         }),
+        signal: abortController.signal,
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -242,8 +249,11 @@ function NewContactModal({
       }
       onSaved();
     } catch (err: any) {
+      if (err?.name === "AbortError") return;
       setError(err.message || "Ocurrió un error inesperado.");
       setLoading(false);
+    } finally {
+      abortController.abort();
     }
   }
 

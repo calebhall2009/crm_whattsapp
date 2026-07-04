@@ -1,54 +1,55 @@
 "use client";
 
-import { useAuth, UserButton } from "@clerk/nextjs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { logout, getCurrentUser, API_URL } from "@/lib/auth";
 
 export default function OnboardingPage() {
-  const { getToken } = useAuth();
   const router = useRouter();
+  const [userName, setUserName] = useState("");
 
   // Form State
   const [companyName, setCompanyName] = useState("");
   const [userRole, setUserRole] = useState("owner");
   const [vertical, setVertical] = useState("retail");
   const [domain, setDomain] = useState("");
-  const [country] = useState("EC"); // Solo Ecuador por ahora
   const [employees, setEmployees] = useState("1-5");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    // Verificar si el usuario está logueado
+    async function checkAuth() {
+      const user = await getCurrentUser();
+      if (!user) {
+        router.push("/login");
+      } else {
+        setUserName((user.email || "").split("@")[0] || "Usuario");
+      }
+    }
+    checkAuth();
+  }, [router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyName.trim()) {
-      setError("Por favor, ingresa el nombre de tu empresa.");
-      return;
-    }
-
     setLoading(true);
     setError("");
 
     try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("No se pudo obtener el token de sesión. Vuelve a iniciar sesión.");
-      }
+      const employeesNum =
+        employees === "1-5" ? 3 : employees === "6-15" ? 10 : employees === "16-50" ? 30 : 100;
 
-      const employeesNum = employees === "1-5" ? 3 : employees === "6-15" ? 10 : employees === "16-50" ? 30 : 100;
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-
-      const res = await fetch(`${apiUrl}/onboarding`, {
+      // Actualizar perfil de la empresa con los datos adicionales
+      const res = await fetch(`${API_URL}/onboarding`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include", // Enviar cookie crm_token automáticamente
         body: JSON.stringify({
-          companyName,
           vertical,
           employees: employeesNum,
-          country,
           domain: domain.trim() || undefined,
         }),
       });
@@ -58,8 +59,9 @@ export default function OnboardingPage() {
         throw new Error(errData.message || "Error al completar el registro inicial.");
       }
 
-      // Onboarding complete, redirect to dashboard
+      // Redirigir al dashboard
       router.push("/dashboard");
+      router.refresh();
     } catch (err: any) {
       setError(err.message || "Ocurrió un error inesperado.");
       setLoading(false);
@@ -69,8 +71,13 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-paper-50 font-body">
       <div className="absolute top-4 right-4 flex items-center gap-3">
-        <UserButton />
-        <span className="text-xs text-charcoal-400 font-mono">Mi Cuenta</span>
+        <span className="text-sm font-semibold text-charcoal-700 capitalize">Hola, {userName}</span>
+        <button
+          onClick={logout}
+          className="text-xs text-rose-600 hover:text-rose-700 border border-rose-200 px-2 py-1 rounded hover:bg-rose-50 transition-all font-mono"
+        >
+          Cerrar Sesión
+        </button>
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
@@ -96,24 +103,6 @@ export default function OnboardingPage() {
                 </div>
               </div>
             )}
-
-            <div>
-              <label htmlFor="companyName" className="block text-sm font-medium text-charcoal-700">
-                Nombre de la Empresa *
-              </label>
-              <div className="mt-1">
-                <input
-                  id="companyName"
-                  name="companyName"
-                  type="text"
-                  required
-                  placeholder="Ej. Tienda, Spa o Restaurante"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-charcoal-200 rounded-button shadow-sm placeholder-charcoal-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm font-mono"
-                />
-              </div>
-            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>

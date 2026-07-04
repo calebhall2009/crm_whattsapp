@@ -7,7 +7,7 @@ import {
   createParamDecorator,
   ExecutionContext,
 } from "@nestjs/common";
-import type { AuthContext } from "./clerk.guard";
+import type { AuthContext } from "./jwt.guard";
 
 // ── @Public() — skip auth on this endpoint ────────────────────
 export const IS_PUBLIC_KEY = "isPublic";

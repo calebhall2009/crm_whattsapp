@@ -15,6 +15,9 @@ export * from "./appointments";
 export * from "./pipelines";
 export * from "./automations";
 
+// ── Support ───────────────────────────────────────────────────
+export * from "./tickets";
+
 // ── POS (deprecated — kept for data history) ──────────────────
 export * from "./items";
 export * from "./orders";

@@ -1,39 +1,36 @@
-import { Controller, Post, Body, Headers, BadRequestException } from "@nestjs/common";
+// ─────────────────────────────────────────────────────────────
+// Onboarding Controller
+//
+// POST /onboarding — Completa datos adicionales de la empresa
+// ─────────────────────────────────────────────────────────────
+
+import { Controller, Post, Body } from "@nestjs/common";
 import { OnboardingService } from "./onboarding.service";
-import { Public } from "../auth/decorators";
+import { Auth, CompanyId } from "../auth/decorators";
 
 @Controller("onboarding")
 export class OnboardingController {
   constructor(private readonly service: OnboardingService) {}
 
-  /** Onboard a new tenant and user */
+  /**
+   * POST /onboarding
+   * Actualiza datos adicionales de la empresa del usuario autenticado.
+   * Ya no crea la empresa (eso lo hace /auth/register).
+   */
   @Post()
-  @Public() // Accessible to new users without database records yet
-  async onboard(
-    @Headers("authorization") authorization: string,
+  async completeProfile(
+    @CompanyId() companyId: string,
     @Body()
     body: {
-      companyName: string;
-      vertical: string;
-      employees: number;
-      country: string;
+      vertical?: string;
+      employees?: number;
       domain?: string;
     }
   ) {
-    if (!authorization) {
-      throw new BadRequestException("No authorization header provided");
-    }
-
-    const token = authorization.replace("Bearer ", "");
-    try {
-      const result = await this.service.onboard(token, body);
-      return {
-        message: "Onboarding completed successfully",
-        data: result,
-      };
-    } catch (err: any) {
-      console.error("ONBOARDING_ERROR_LOG:", err);
-      throw new BadRequestException(err.message || "Error al completar el registro inicial.");
-    }
+    const result = await this.service.completeProfile(companyId, body);
+    return {
+      message: "Perfil completado exitosamente",
+      ...result,
+    };
   }
 }

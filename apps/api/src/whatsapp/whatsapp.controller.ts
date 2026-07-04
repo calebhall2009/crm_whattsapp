@@ -47,7 +47,8 @@ export class WhatsAppController {
   @Public()
   @HttpCode(HttpStatus.OK)
   async receiveWebhook(@Body() body: any) {
-    // Always respond 200 immediately — Meta will retry if we take too long
+    // Always respond 200 immediately — Meta will retry if we take too long.
+    // Process webhook in the background.
     this.service.handleWebhook(body).catch((err) => {
       console.error("WhatsApp webhook processing error:", err);
     });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { API_URL } from "@/lib/auth";
 
 interface Conversation {
   id: string;
@@ -34,7 +34,6 @@ const ROLE_STYLE: Record<string, string> = {
 };
 
 export default function ConversationsPage() {
-  const { getToken } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selected, setSelected] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -42,14 +41,11 @@ export default function ConversationsPage() {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-
   // Load conversations list
   useEffect(() => {
     async function loadConversations() {
-      const token = await getToken();
-      const res = await fetch(`${apiUrl}/conversations`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`${API_URL}/conversations`, {
+        credentials: "include"
       });
       if (res.ok) {
         const json = await res.json();
@@ -57,15 +53,14 @@ export default function ConversationsPage() {
       }
     }
     loadConversations();
-  }, [getToken]);
+  }, []);
 
   // Load messages when a conversation is selected
   useEffect(() => {
     if (!selected) return;
     async function loadMessages() {
-      const token = await getToken();
-      const res = await fetch(`${apiUrl}/conversations/${selected!.id}/messages`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`${API_URL}/conversations/${selected!.id}/messages`, {
+        credentials: "include"
       });
       if (res.ok) {
         const json = await res.json();
@@ -73,7 +68,7 @@ export default function ConversationsPage() {
       }
     }
     loadMessages();
-  }, [selected, getToken]);
+  }, [selected]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -82,10 +77,10 @@ export default function ConversationsPage() {
 
   async function handleTakeOver() {
     if (!selected) return;
-    const token = await getToken();
-    await fetch(`${apiUrl}/conversations/${selected.id}/assign`, {
+    await fetch(`${API_URL}/conversations/${selected.id}/assign`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({}),
     });
     setSelected({ ...selected, status: "agent" });
@@ -94,10 +89,10 @@ export default function ConversationsPage() {
   async function handleSend() {
     if (!newMessage.trim() || !selected) return;
     setSending(true);
-    const token = await getToken();
-    const res = await fetch(`${apiUrl}/conversations/${selected.id}/messages`, {
+    const res = await fetch(`${API_URL}/conversations/${selected.id}/messages`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ message: newMessage }),
     });
     if (res.ok) {

@@ -1,150 +1,69 @@
-import { Injectable, Inject, BadRequestException, Logger } from "@nestjs/common";
+// ─────────────────────────────────────────────────────────────
+// Onboarding Service
+//
+// El registro ya no pasa por aquí (ahora es AuthService.register).
+// Este servicio maneja la actualización de datos adicionales de
+// la empresa después del registro inicial (vertical, empleados, etc.)
+// ─────────────────────────────────────────────────────────────
+
+import { Injectable, Inject, BadRequestException } from "@nestjs/common";
 import { DATABASE_TOKEN } from "../database/database.module";
 import type { Database } from "@pos/database";
-import { companies, users, locations } from "@pos/database";
+import { companies, locations } from "@pos/database";
 import { eq } from "drizzle-orm";
-import { COUNTRY_CURRENCY, Country } from "@pos/types";
-import { CLERK_CLIENT } from "../auth/auth.module";
 
 const COUNTRY_TIMEZONE: Record<string, string> = {
   EC: "America/Guayaquil",
+  CO: "America/Bogota",
+  PE: "America/Lima",
+  CL: "America/Santiago",
+  US: "America/New_York",
 };
 
 @Injectable()
 export class OnboardingService {
-  private readonly logger = new Logger(OnboardingService.name);
+  constructor(@Inject(DATABASE_TOKEN) private readonly db: Database) {}
 
-  constructor(
-    @Inject(DATABASE_TOKEN) private readonly db: Database,
-    @Inject(CLERK_CLIENT) private readonly clerk: any
-  ) {}
-
-  async onboard(
-    clerkToken: string,
+  /**
+   * Completa el perfil de la empresa con datos adicionales.
+   * Se llama después de que el usuario ya se registró.
+   */
+  async completeProfile(
+    companyId: string,
     data: {
-      companyName: string;
-      vertical: string;
-      employees: number;
-      country: string;
+      vertical?: string;
+      employees?: number;
       domain?: string;
     }
   ) {
-    let clerkUserId: string;
-    try {
-      // 1. Verify Clerk session token
-      const payload = await this.clerk.verifyToken(clerkToken);
-      clerkUserId = payload.sub;
-    } catch (e: any) {
-      console.error("CLERK_VERIFY_TOKEN_ERROR:", e);
-      throw new BadRequestException(`Invalid or expired session token: ${e.message || e}`);
+    if (!companyId) {
+      throw new BadRequestException("No tienes una empresa asociada a tu cuenta.");
     }
 
-    // 2. Check if user already onboarded
-    const [existingUser] = await this.db
+    // Verificar que la empresa existe
+    const [company] = await this.db
       .select()
-      .from(users)
-      .where(eq(users.clerkUserId, clerkUserId))
+      .from(companies)
+      .where(eq(companies.id, companyId))
       .limit(1);
 
-    if (existingUser) {
-      throw new BadRequestException("User has already completed onboarding");
+    if (!company) {
+      throw new BadRequestException("Empresa no encontrada.");
     }
 
-    // 3. Get user profile details from Clerk
-    let clerkUser: any;
-    try {
-      clerkUser = await this.clerk.users.getUser(clerkUserId);
-    } catch (e: any) {
-      console.error("CLERK_GET_USER_ERROR:", e);
-      throw new BadRequestException(`Failed to fetch user details from Clerk: ${e.message || e}`);
+    // Actualizar datos opcionales de la empresa
+    const updateData: any = {};
+    if (data.domain?.trim()) {
+      updateData.domain = data.domain.trim();
     }
 
-    const email = clerkUser.emailAddresses[0]?.emailAddress;
-    const firstName = clerkUser.firstName || "";
-    const lastName = clerkUser.lastName || "";
-
-    if (!email) {
-      throw new BadRequestException("Clerk user does not have an email address");
+    if (Object.keys(updateData).length > 0) {
+      await this.db
+        .update(companies)
+        .set(updateData)
+        .where(eq(companies.id, companyId));
     }
 
-    // 4. Determine company currency and default timezone
-    const country = data.country as Country;
-    const currency = COUNTRY_CURRENCY[country] || "USD";
-    const timezone = COUNTRY_TIMEZONE[country] || "America/Guayaquil";
-
-    // 5. Generate unique slug and resolve corporate domain
-    const slugBase = data.companyName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-    const slug = `${slugBase}-${Date.now().toString(36)}`;
-    const domain = data.domain || `${slugBase}.pos4.com`;
-
-    // 6. Create the company and user records in a transaction
-    return await this.db.transaction(async (tx) => {
-      // Create Company
-      const [company] = await tx
-        .insert(companies)
-        .values({
-          name: data.companyName,
-          slug,
-          country,
-          currency,
-          domain,
-          subscriptionStatus: "trialing",
-          trialEndsAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3-day trial
-        } as any)
-        .returning();
-
-      // Create User (Owner role)
-      const [user] = await tx
-        .insert(users)
-        .values({
-          companyId: company.id,
-          clerkUserId,
-          role: "owner",
-          firstName,
-          lastName,
-          email,
-          isActive: true,
-        } as any)
-        .returning();
-
-      // Create default location
-      await tx.insert(locations).values({
-        companyId: company.id,
-        name: "Casa Matriz",
-        timezone,
-        isActive: true,
-      } as any);
-
-      // 7. Send Simulated Welcome Email
-      this.simulateWelcomeEmail(email, firstName, data.companyName);
-
-      return { company, user };
-    });
-  }
-
-  private simulateWelcomeEmail(email: string, name: string, companyName: string) {
-    this.logger.log(`
-============================================================
-📧 SIMULATED Welcome Email sent to: ${email}
-Subject: ¡Te damos la bienvenida a tu Punto de Venta!
-
-Hola ${name || "Usuario"},
-
-¡Muchas gracias por registrarte y empezar a usar nuestro Punto de Venta (POS) para tu empresa "${companyName}"!
-
-Queremos ayudarte a simplificar la facturación, el stock y los reportes de tu negocio.
-Actualmente estás en el período de prueba gratuito de 3 días.
-
-¿Te interesaría agendar una breve demostración para conocer más o adquirir un plan Pro/Enterprise para habilitar la facturación electrónica?
-
-Responde a este correo y nos pondremos en contacto contigo.
-
-Atentamente,
-El Equipo de POS SaaS B2B Ecuador
-============================================================
-    `);
+    return { success: true, companyId };
   }
 }

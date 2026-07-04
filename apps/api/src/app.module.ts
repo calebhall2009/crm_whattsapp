@@ -1,13 +1,14 @@
 // ─────────────────────────────────────────────────────────────
-// Root Application Module
+// Root Application Module — Versión simplificada
+// Sin Clerk, sin BullMQ/Redis — auth propio con JWT
 // ─────────────────────────────────────────────────────────────
 
 import { Module } from "@nestjs/common";
 import { ThrottlerModule } from "@nestjs/throttler";
-import { BullModule } from "@nestjs/bullmq";
 
 import { DatabaseModule } from "./database/database.module";
 import { AuthModule } from "./auth/auth.module";
+import { AdminModule } from "./admin/admin.module";
 import { AuditModule } from "./audit/audit.module";
 import { HealthModule } from "./health/health.module";
 import { OnboardingModule } from "./onboarding/onboarding.module";
@@ -32,42 +33,16 @@ import { BillingModule } from "./billing/billing.module";
 
 @Module({
   imports: [
-    // ── Rate Limiting ─────────────────────────────────────────
+    // ── Rate Limiting (protección básica contra spam) ─────────
     ThrottlerModule.forRoot([
-      { name: "short", ttl: 1000, limit: 10 },
-      { name: "long", ttl: 60000, limit: 100 },
+      { name: "short", ttl: 1000, limit: 20 },
+      { name: "long", ttl: 60000, limit: 200 },
     ]),
-
-    // ── Queue (BullMQ + Redis) ────────────────────────────────
-    BullModule.forRoot({
-      connection: (() => {
-        if (process.env.REDIS_URL) {
-          try {
-            const parsed = new URL(process.env.REDIS_URL);
-            return {
-              host: parsed.hostname,
-              port: parseInt(parsed.port || "6379", 10),
-              password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
-              username: parsed.username || undefined,
-              // If protocol is 'rediss:' (with two 's'), enable TLS (SSL)
-              tls: parsed.protocol === "rediss:" ? {} : undefined,
-            };
-          } catch (e) {
-            // Fallback to separate env variables if parsing fails
-          }
-        }
-        return {
-          host: process.env.REDIS_HOST || "localhost",
-          port: parseInt(process.env.REDIS_PORT || "6379", 10),
-          password: process.env.REDIS_PASSWORD || undefined,
-          tls: process.env.REDIS_TLS === "true" ? {} : undefined,
-        };
-      })() as any,
-    }),
 
     // ── Core ──────────────────────────────────────────────────
     DatabaseModule,
-    AuthModule,
+    AuthModule,      // JWT propio (sin Clerk)
+    AdminModule,     // Panel super admin
     AuditModule,
     HealthModule,
 
@@ -94,4 +69,3 @@ import { BillingModule } from "./billing/billing.module";
   ],
 })
 export class AppModule {}
-
