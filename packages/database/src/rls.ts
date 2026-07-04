@@ -31,6 +31,13 @@ export const RLS_TABLES = [
   "payments",
   "fiscal_documents",
   "audit_log",
+  "contacts",
+  "conversations",
+  "messages",
+  "appointments",
+  "deals",
+  "pipeline_stages",
+  "automations",
 ] as const;
 
 /**

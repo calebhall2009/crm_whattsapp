@@ -184,17 +184,19 @@ ${ctx.businessDescription ? `\nInformación del negocio:\n${ctx.businessDescript
       { role: "user", content: userMessage },
     ];
 
+    // Resolve model once — selection is constant for the lifetime of the service
+    // and re-evaluating env vars on every iteration was wasted work.
+    let model = "gpt-4o-mini";
+    if (process.env.GEMINI_API_KEY) {
+      model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    } else if (this.useOllama) {
+      model = process.env.OLLAMA_MODEL || "llama3";
+    } else {
+      model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+    }
+
     // ── Agentic loop (up to 5 iterations) ────────────────────
     for (let iteration = 0; iteration < 5; iteration++) {
-      let model = "gpt-4o-mini";
-      if (process.env.GEMINI_API_KEY) {
-        model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-      } else if (this.useOllama) {
-        model = process.env.OLLAMA_MODEL || "llama3";
-      } else {
-        model = process.env.OPENAI_MODEL || "gpt-4o-mini";
-      }
-
       const response = await this.openai.chat.completions.create({
         model,
         messages: chatMessages,
@@ -222,7 +224,25 @@ ${ctx.businessDescription ? `\nInformación del negocio:\n${ctx.businessDescript
       // Execute each tool call
       for (const toolCall of assistantMsg.tool_calls) {
         const fnName = toolCall.function.name;
-        const args = JSON.parse(toolCall.function.arguments || "{}");
+        // Wrap JSON.parse in try/catch — malformed tool arguments from the LLM
+        // would otherwise throw out of the agentic loop and abort the whole
+        // response, leaving the user with no reply.
+        let args: Record<string, unknown> = {};
+        try {
+          args = JSON.parse(toolCall.function.arguments || "{}");
+        } catch (parseErr: any) {
+          this.logger.warn(
+            `Failed to parse tool arguments for ${fnName}: ${parseErr.message}`
+          );
+          chatMessages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: JSON.stringify({
+              error: `Invalid JSON arguments: ${parseErr.message}`,
+            }),
+          });
+          continue;
+        }
         toolsUsed.push(fnName);
 
         const result = await this.executeTool(fnName, args, ctx);
