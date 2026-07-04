@@ -120,7 +120,7 @@ export class AuthService {
       .where(eq(users.id, user.id));
 
     // 4. Generar JWT con datos del usuario
-    const secret = process.env.JWT_SECRET!;
+    const secret = process.env.JWT_SECRET || "default_crm_super_secret_key_123";
     const token = jwt.sign(
       {
         sub: user.id,
