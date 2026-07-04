@@ -38,31 +38,34 @@ export default function ContactsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [showModal, setShowModal] = useState(false);
+
+  async function loadContacts() {
+    try {
+      const token = await getToken();
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (statusFilter) params.set("status", statusFilter);
+
+      const res = await fetch(`${apiUrl}/contacts?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setContacts(json.data ?? []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function load() {
-      try {
-        const token = await getToken();
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-        const params = new URLSearchParams();
-        if (search) params.set("search", search);
-        if (statusFilter) params.set("status", statusFilter);
-
-        const res = await fetch(`${apiUrl}/contacts?${params}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          setContacts(json.data ?? []);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [search, statusFilter, getToken]);
+    loadContacts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, statusFilter]);
 
   return (
     <div>
@@ -72,7 +75,11 @@ export default function ContactsPage() {
           <h1 className="font-display text-2xl font-bold text-charcoal-800">Contactos</h1>
           <p className="text-sm text-charcoal-400 mt-1">Leads y clientes de WhatsApp</p>
         </div>
-        <button className="px-4 py-2.5 bg-amber-400 text-charcoal-900 rounded-button font-semibold hover:bg-amber-300 transition-colors text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
+        <button
+          id="btn-nuevo-contacto"
+          onClick={() => setShowModal(true)}
+          className="px-4 py-2.5 bg-amber-400 text-charcoal-900 rounded-button font-semibold hover:bg-amber-300 transition-colors text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        >
           + Nuevo Contacto
         </button>
       </div>
@@ -108,9 +115,15 @@ export default function ContactsPage() {
           <div className="p-12 text-center">
             <p className="text-4xl mb-3">👥</p>
             <p className="font-display font-semibold text-charcoal-700 mb-1">Sin contactos aún</p>
-            <p className="text-sm text-charcoal-400">
+            <p className="text-sm text-charcoal-400 mb-4">
               Los leads que escriban por WhatsApp aparecerán aquí automáticamente.
             </p>
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-4 py-2 bg-amber-400 text-charcoal-900 rounded-button text-sm font-semibold hover:bg-amber-300 transition-colors"
+            >
+              + Crear primer contacto
+            </button>
           </div>
         ) : (
           <table className="w-full">
@@ -168,6 +181,144 @@ export default function ContactsPage() {
             </tbody>
           </table>
         )}
+      </div>
+
+      {/* New Contact Modal */}
+      {showModal && (
+        <NewContactModal
+          onClose={() => setShowModal(false)}
+          onSaved={() => {
+            setShowModal(false);
+            setLoading(true);
+            loadContacts();
+          }}
+          getToken={getToken}
+        />
+      )}
+    </div>
+  );
+}
+
+function NewContactModal({
+  onClose,
+  onSaved,
+  getToken,
+}: {
+  onClose: () => void;
+  onSaved: () => void;
+  getToken: () => Promise<string | null>;
+}) {
+  const [form, setForm] = useState({ name: "", phone: "", email: "", source: "manual" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim() || !form.phone.trim()) {
+      setError("Nombre y teléfono son obligatorios.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const token = await getToken();
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+      const res = await fetch(`${apiUrl}/contacts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim() || undefined,
+          source: form.source,
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "Error al crear el contacto.");
+      }
+      onSaved();
+    } catch (err: any) {
+      setError(err.message || "Ocurrió un error inesperado.");
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-card shadow-2xl w-full max-w-md border border-charcoal-100 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-charcoal-100 bg-charcoal-800">
+          <h3 className="font-display font-bold text-white text-lg">👤 Nuevo Contacto</h3>
+          <button onClick={onClose} className="text-charcoal-300 hover:text-white transition-colors text-xl leading-none">×</button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="bg-rose-50 border-l-4 border-rose-500 p-3 rounded text-sm text-rose-700">{error}</div>
+          )}
+          <div>
+            <label htmlFor="contact-name" className="block text-xs font-medium text-charcoal-600 mb-1">Nombre completo *</label>
+            <input
+              id="contact-name"
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Ej. María González"
+              className="w-full px-3 py-2 border border-charcoal-200 rounded-button text-sm font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            />
+          </div>
+          <div>
+            <label htmlFor="contact-phone" className="block text-xs font-medium text-charcoal-600 mb-1">Teléfono (WhatsApp) *</label>
+            <input
+              id="contact-phone"
+              type="tel"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              placeholder="+593 99 123 4567"
+              className="w-full px-3 py-2 border border-charcoal-200 rounded-button text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            />
+          </div>
+          <div>
+            <label htmlFor="contact-email" className="block text-xs font-medium text-charcoal-600 mb-1">Email (opcional)</label>
+            <input
+              id="contact-email"
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="correo@ejemplo.com"
+              className="w-full px-3 py-2 border border-charcoal-200 rounded-button text-sm font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            />
+          </div>
+          <div>
+            <label htmlFor="contact-source" className="block text-xs font-medium text-charcoal-600 mb-1">Origen</label>
+            <select
+              id="contact-source"
+              value={form.source}
+              onChange={(e) => setForm({ ...form, source: e.target.value })}
+              className="w-full px-3 py-2 border border-charcoal-200 rounded-button text-sm font-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              <option value="manual">✏️ Manual</option>
+              <option value="whatsapp">💬 WhatsApp</option>
+              <option value="referral">🤝 Referido</option>
+              <option value="web">🌐 Web</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border border-charcoal-200 rounded-button text-sm font-semibold text-charcoal-600 hover:bg-paper-50 transition-colors">
+              Cancelar
+            </button>
+            <button
+              id="btn-guardar-contacto"
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-4 py-2.5 bg-amber-400 text-charcoal-900 rounded-button text-sm font-semibold hover:bg-amber-300 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              {loading ? "Guardando..." : "Guardar Contacto"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

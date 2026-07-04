@@ -32,18 +32,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           },
         });
 
-        if (res.status === 401) {
-          const body = await res.json().catch(() => ({}));
-          // If user doesn't exist in the database, redirect to onboarding
-          if (body.message?.includes("User not found") || body.message?.includes("not found")) {
-            if (pathname !== "/onboarding") {
-              router.push("/onboarding");
-            }
-          }
-        } else if (res.status === 200) {
-          // If user exists and is on onboarding, redirect back to dashboard
+        if (res.status === 200) {
+          // User exists and has a company — if on onboarding, send to dashboard
           if (pathname === "/onboarding") {
             router.push("/dashboard");
+          }
+        } else {
+          // Any non-200 (401, 403, 404, 500) means user is not yet onboarded
+          // (new Clerk user with no DB record, or guard wrapping the error)
+          if (pathname !== "/onboarding") {
+            router.push("/onboarding");
           }
         }
       } catch (err) {
