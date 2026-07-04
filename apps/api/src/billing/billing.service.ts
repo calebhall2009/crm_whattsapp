@@ -15,7 +15,11 @@ export class BillingService {
   private readonly stripe: Stripe;
 
   constructor(@Inject(DATABASE_TOKEN) private readonly db: Database) {
-    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+    const stripeKey = process.env.STRIPE_SECRET_KEY || "sk_test_mock_key_to_avoid_startup_crash_1234567890";
+    if (!process.env.STRIPE_SECRET_KEY) {
+      this.logger.warn("STRIPE_SECRET_KEY is not set — using dummy mock key for startup");
+    }
+    this.stripe = new Stripe(stripeKey, {
       apiVersion: "2025-02-24.acacia",
     });
   }
