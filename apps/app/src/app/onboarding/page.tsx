@@ -79,7 +79,7 @@ export default function OnboardingPage() {
           Configuración de tu Negocio
         </h2>
         <p className="mt-2 text-center text-sm text-charcoal-500">
-          Completa estos datos para activar tu Punto de Venta (POS)
+          Completa estos datos para activar tu CRM & Sistema
         </p>
       </div>
 
@@ -107,7 +107,7 @@ export default function OnboardingPage() {
                   name="companyName"
                   type="text"
                   required
-                  placeholder="Ej. Tienda Doña María"
+                  placeholder="Ej. Tienda, Spa o Restaurante"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   className="appearance-none block w-full px-3 py-2 border border-charcoal-200 rounded-button shadow-sm placeholder-charcoal-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm font-mono"
@@ -128,8 +128,8 @@ export default function OnboardingPage() {
                 >
                   <option value="owner">Dueño / Fundador</option>
                   <option value="admin">Administrador</option>
-                  <option value="manager">Gerente de Tienda</option>
-                  <option value="cashier">Cajero</option>
+                  <option value="manager">Gerente de Local</option>
+                  <option value="cashier">Cajero / Personal</option>
                 </select>
               </div>
 
@@ -143,9 +143,10 @@ export default function OnboardingPage() {
                   onChange={(e) => setVertical(e.target.value)}
                   className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-charcoal-200 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm rounded-button font-mono"
                 >
-                  <option value="retail">Retail / Tienda</option>
-                  <option value="restaurant">Restaurante / Bar</option>
-                  <option value="services">Servicios y Reservas</option>
+                  <option value="services">Servicios, Spa o Barbería</option>
+                  <option value="restaurant">Restaurante o Bar</option>
+                  <option value="hotel">Hotel o Alojamiento</option>
+                  <option value="retail">Retail / Comercio</option>
                 </select>
               </div>
             </div>
@@ -159,7 +160,7 @@ export default function OnboardingPage() {
                   id="domain"
                   name="domain"
                   type="text"
-                  placeholder="Ej. mi-tienda.pos.com"
+                  placeholder="Ej. mi-negocio.pos.com"
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
                   className="appearance-none block w-full px-3 py-2 border border-charcoal-200 rounded-button shadow-sm placeholder-charcoal-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm font-mono"
@@ -193,7 +194,7 @@ export default function OnboardingPage() {
                 disabled={loading}
                 className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-button shadow-sm text-sm font-semibold text-charcoal-900 bg-amber-400 hover:bg-amber-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 transition-all font-mono uppercase"
               >
-                {loading ? "Configurando Sistema..." : "Comenzar a Facturar"}
+                {loading ? "Configurando Sistema..." : "Comenzar"}
               </button>
             </div>
           </form>

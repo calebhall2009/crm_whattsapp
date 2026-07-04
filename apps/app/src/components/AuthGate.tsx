@@ -36,17 +36,20 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           // User exists and has a company — if on onboarding, send to dashboard
           if (pathname === "/onboarding") {
             router.push("/dashboard");
+          } else {
+            setChecking(false);
           }
         } else {
           // Any non-200 (401, 403, 404, 500) means user is not yet onboarded
           // (new Clerk user with no DB record, or guard wrapping the error)
           if (pathname !== "/onboarding") {
             router.push("/onboarding");
+          } else {
+            setChecking(false);
           }
         }
       } catch (err) {
         console.error("Error checking user onboarding state:", err);
-      } finally {
         setChecking(false);
       }
     }
